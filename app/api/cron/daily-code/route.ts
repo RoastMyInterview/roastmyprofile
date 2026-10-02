@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 export const dynamic = 'force-dynamic';
 
 function getCodeForDate(d: Date): string {
-  const dateStr = `${d.getUTCFullYear()}-${d.getUTMonth() + 1}-${d.getUTCDate()}`;
+  const dateStr = `${d.getUTCFullYear()}-${d.getUTCMonth() + 1}-${d.getUTCDate()}`;
   let hash = 0;
   for (let i = 0; i < dateStr.length; i++) {
     hash = (hash << 5) - hash + dateStr.charCodeAt(i);
