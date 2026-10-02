@@ -1,63 +1,46 @@
-import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
 
-export const dynamic = 'force-dynamic';
+const inter = Inter({ subsets: ['latin'] });
 
-function getCodeForDate(d: Date): string {
-  const dateStr = `${d.getUTCFullYear()}-${d.getUTMonth() + 1}-${d.getUTCDate()}`;
-  let hash = 0;
-  for (let i = 0; i < dateStr.length; i++) {
-    hash = (hash << 5) - hash + dateStr.charCodeAt(i);
-    hash |= 0;
-  }
-  const positiveNum = (Math.abs(hash) % 9000) + 1000;
-  return `VIP-${positiveNum}`;
-}
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#09090b',
+};
 
-export async function GET(req: Request) {
-  try {
-    const url = new URL(req.url);
-    const authHeader = req.headers.get('authorization');
-    const userAgent = req.headers.get('user-agent') || '';
-    const cronSchedule = req.headers.get('x-vercel-cron-schedule');
-    const testKey = url.searchParams.get('key');
-    const cronSecret = process.env.CRON_SECRET;
+export const metadata: Metadata = {
+  metadataBase: new URL('https://roastmyprofile.me'),
+  title: 'RoastMyProfile.me | Face Dick Headerson',
+  description: 'Submit your profile to the hot seat. Dick Headerson provides tough love, zero fluff, and instant reality checks on your bio and photos.',
+  keywords: ['profile roast', 'dating profile roast', 'LinkedIn roast', 'bio roast', 'Dick Headerson'],
+  openGraph: {
+    title: 'RoastMyProfile.me | Face Dick Headerson',
+    description: 'Think your profile is getting matches or replies? Face Dick Headerson and see if you survive the hot seat.',
+    url: 'https://roastmyprofile.me',
+    siteName: 'RoastMyProfile.me',
+    images: [{ url: 'https://roastmyinterview.me/dick-avatar.jpg', width: 1200, height: 630, alt: 'Dick Headerson' }],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'RoastMyProfile.me | Face Dick Headerson',
+    description: 'Dick Headerson shreds weak profiles. Step into the hot seat.',
+    images: ['https://roastmyinterview.me/dick-avatar.jpg'],
+  },
+  icons: { icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔥</text></svg>' },
+};
 
-    const isVercelCron = userAgent.includes('vercel-cron') || Boolean(cronSchedule);
-    const isBearerValid = Boolean(cronSecret && authHeader === `Bearer ${cronSecret}`);
-    const isManualTest = testKey === 'VIP-BOSS';
-
-    if (!isVercelCron && !isBearerValid && !isManualTest) {
-      return NextResponse.json({ success: false, error: 'Unauthorized: Bot or external ping blocked.' }, { status: 401 });
-    }
-
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) return NextResponse.json({ success: false, error: 'RESEND_API_KEY is missing' }, { status: 500 });
-
-    const resend = new Resend(apiKey);
-    const code = getCodeForDate(new Date());
-    const adminEmail = process.env.ADMIN_EMAIL;
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
-
-    if (!adminEmail) return NextResponse.json({ success: false, error: 'ADMIN_EMAIL is missing' }, { status: 500 });
-
-    const { data, error } = await resend.emails.send({
-      from: `RoastMyProfile <${fromEmail}>`,
-      to: [adminEmail],
-      subject: `🔥 Today's Dick Headerson VIP Passcode: ${code}`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Dick Headerson's Daily VIP Code</h2>
-          <p>Here is today's daily passcode to unlock the 13-Question VIP Gauntlet for RoastMyProfile.me:</p>
-          <h1 style="color: #f97316; font-family: monospace; background: #f4f4f5; padding: 10px; border-radius: 8px;">${code}</h1>
-          <p>This code is valid for today only (UTC time).</p>
-        </div>
-      `,
-    });
-
-    if (error) return NextResponse.json({ success: false, error }, { status: 500 });
-    return NextResponse.json({ success: true, code, data });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className="dark">
+      <body className={`${inter.className} bg-zinc-950 text-zinc-100 antialiased selection:bg-orange-500 selection:text-black`}>
+        {children}
+      </body>
+    </html>
+  );
 }
