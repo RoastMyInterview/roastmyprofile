@@ -1,69 +1,63 @@
-import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
+import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
 
-const inter = Inter({ subsets: ['latin'] });
+export const dynamic = 'force-dynamic';
 
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#09090b',
-};
+function getCodeForDate(d: Date): string {
+  const dateStr = `${d.getUTCFullYear()}-${d.getUTMonth() + 1}-${d.getUTCDate()}`;
+  let hash = 0;
+  for (let i = 0; i < dateStr.length; i++) {
+    hash = (hash << 5) - hash + dateStr.charCodeAt(i);
+    hash |= 0;
+  }
+  const positiveNum = (Math.abs(hash) % 9000) + 1000;
+  return `VIP-${positiveNum}`;
+}
 
-export const metadata: Metadata = {
-  metadataBase: new URL('https://roastmyinterview.me'),
-  title: 'RoastMyInterview.me | Face Dick Headerson',
-  description:
-    'Face tough-love executive hiring manager Dick Headerson. Zero buzzwords, brutal reality checks, and instant termination for corporate jargon.',
-  keywords: [
-    'mock interview',
-    'AI interview roast',
-    'Dick Headerson',
-    'job interview practice',
-    'corporate buzzwords',
-    'interview prep'
-  ],
-  openGraph: {
-    title: 'RoastMyInterview.me | Face Dick Headerson',
-    description:
-      'Think you can survive a mock interview without buzzwords? Face Dick Headerson and see if you get hired or terminated on question 1.',
-    url: 'https://roastmyinterview.me',
-    siteName: 'RoastMyInterview.me',
-    images: [
-      {
-        url: '/dick-avatar.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Dick Headerson - RoastMyInterview.me',
-      },
-    ],
-    locale: 'en_US',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'RoastMyInterview.me | Face Dick Headerson',
-    description:
-      'Survive the hot seat with tough-love hiring manager Dick Headerson without corporate buzzwords.',
-    images: ['/dick-avatar.jpg'],
-  },
-  icons: {
-    icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>',
-  },
-};
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const authHeader = req.headers.get('authorization');
+    const userAgent = req.headers.get('user-agent') || '';
+    const cronSchedule = req.headers.get('x-vercel-cron-schedule');
+    const testKey = url.searchParams.get('key');
+    const cronSecret = process.env.CRON_SECRET;
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} bg-zinc-950 text-zinc-100 antialiased selection:bg-orange-500 selection:text-black`}>
-        {children}
-      </body>
-    </html>
-  );
+    const isVercelCron = userAgent.includes('vercel-cron') || Boolean(cronSchedule);
+    const isBearerValid = Boolean(cronSecret && authHeader === `Bearer ${cronSecret}`);
+    const isManualTest = testKey === 'VIP-BOSS';
+
+    if (!isVercelCron && !isBearerValid && !isManualTest) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: Bot or external ping blocked.' }, { status: 401 });
+    }
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) return NextResponse.json({ success: false, error: 'RESEND_API_KEY is missing' }, { status: 500 });
+
+    const resend = new Resend(apiKey);
+    const code = getCodeForDate(new Date());
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+
+    if (!adminEmail) return NextResponse.json({ success: false, error: 'ADMIN_EMAIL is missing' }, { status: 500 });
+
+    const { data, error } = await resend.emails.send({
+      from: `RoastMyProfile <${fromEmail}>`,
+      to: [adminEmail],
+      subject: `🔥 Today's Dick Headerson VIP Passcode: ${code}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Dick Headerson's Daily VIP Code</h2>
+          <p>Here is today's daily passcode to unlock the 13-Question VIP Gauntlet for RoastMyProfile.me:</p>
+          <h1 style="color: #f97316; font-family: monospace; background: #f4f4f5; padding: 10px; border-radius: 8px;">${code}</h1>
+          <p>This code is valid for today only (UTC time).</p>
+        </div>
+      `,
+    });
+
+    if (error) return NextResponse.json({ success: false, error }, { status: 500 });
+    return NextResponse.json({ success: true, code, data });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
 }
